@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LOKOLClip Pro — Smart Queue & Country Code Stripper</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            cyber: {
+              dark: '#080c15',
+              card: 'rgba(15, 23, 42, 0.75)',
+              border: 'rgba(255, 255, 255, 0.08)',
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              violet: '#8b5cf6',
+              rose: '#f43f5e',
+            }
+          },
+          boxShadow: {
+            'glow-cyan': '0 0 25px -4px rgba(6, 182, 212, 0.45)',
+            'glow-emerald': '0 0 25px -4px rgba(16, 185, 129, 0.45)',
+            'glass': '0 20px 40px -15px rgba(0, 0, 0, 0.65)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Sleek custom scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #080c15; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .cyber-bg {
+      background-color: #080c15;
+      background-image: 
+        radial-gradient(circle at 50% -10%, rgba(6, 182, 212, 0.16) 0%, transparent 45%),
+        radial-gradient(circle at 100% 50%, rgba(139, 92, 246, 0.09) 0%, transparent 40%),
+        radial-gradient(circle at 0% 90%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+    }
+
+    @keyframes popFlash {
+      0% { transform: scale(1); opacity: 1; }
+      40% { transform: scale(1.02); background: rgba(16, 185, 129, 0.25); }
+      100% { transform: scale(0.92); opacity: 0; max-height: 0; padding: 0; margin: 0; }
+    }
+    .card-pop-anim {
+      animation: popFlash 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="bg-cyber-dark text-slate-100 font-sans min-h-screen cyber-bg antialiased selection:bg-cyan-500 selection:text-black pb-28 md:pb-12">
+
+  <!-- Toast Notification Stack -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <div class="max-w-5xl mx-auto px-4 py-5 md:py-8">
+
+    <!-- Header Section -->
+    <header class="glass-panel rounded-3xl p-5 md:p-6 mb-6 shadow-glass relative overflow-hidden">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Logo & Branding -->
+        <div class="flex items-center gap-3.5 text-center md:text-left">
+          <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 via-teal-400 to-emerald-400 p-[1.5px] shadow-glow-cyan flex-shrink-0">
+            <div class="w-full h-full bg-[#0b1120] rounded-2xl flex items-center justify-center text-cyan-400">
+              <i data-lucide="zap" class="w-6 h-6"></i>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-center md:justify-start gap-2.5">
+              <h1 class="text-xl md:text-2xl font-black font-mono tracking-tight text-white">
+                NOKOL<span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">CLIP</span> PRO
+              </h1>
+              <span class="px-2 py-0.5 text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded-full flex items-center gap-1 font-mono">
+                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span> CC-ENGINE
+              </span>
+            </div>
+            <p class="text-slate-400 text-xs mt-0.5">High-speed sequential queue & smart country code stripper</p>
+          </div>
+        </div>
+
+        <!-- Audio & Quick Status -->
+        <div class="flex items-center gap-2">
+          <button id="soundToggleBtn" onclick="toggleSound()" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+            <i id="soundIcon" data-lucide="volume-2" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span id="soundLabel">Sound ON</span>
+          </button>
+          <button onclick="clearEverything()" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-rose-400 hover:bg-rose-500/10 flex items-center gap-1.5 transition-all">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Reset All</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- LIVE METRIC DASHBOARD -->
+    <div class="grid grid-cols-3 gap-3 md:gap-4 mb-6">
+      <div class="glass-panel rounded-2xl p-4 text-center">
+        <span class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Total Loaded</span>
+        <div id="dispTotal" class="text-2xl md:text-4xl font-mono font-extrabold text-white mt-1">0</div>
+      </div>
+      <div class="glass-panel rounded-2xl p-4 text-center border-cyan-500/30 shadow-glow-cyan/20">
+        <span class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-cyan-400 font-mono">Remaining</span>
+        <div id="dispRemaining" class="text-2xl md:text-4xl font-mono font-extrabold text-cyan-400 mt-1">0</div>
+      </div>
+      <div class="glass-panel rounded-2xl p-4 text-center border-emerald-500/30 shadow-glow-emerald/20">
+        <span class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-emerald-400 font-mono">Processed</span>
+        <div id="dispProcessed" class="text-2xl md:text-4xl font-mono font-extrabold text-emerald-400 mt-1">0</div>
+      </div>
+    </div>
+
+    <!-- COUNTRY CODE CONTROL BAR -->
+    <div class="glass-panel rounded-2xl p-4 md:p-5 mb-6 border-cyan-500/30 shadow-glass">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Left: Engine description & active indicator -->
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <i data-lucide="globe" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-white flex items-center gap-2">
+              <span>Country Code (CC) Engine</span>
+              <span id="activeCcModeBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                REMOVE CC ACTIVE
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400">Auto-detects +880, 880, 998, 91, 1, 7, 92, 62, 44, 234 etc. with or without '+'</p>
+          </div>
+        </div>
+
+        <!-- Right: The 2 Core Mode Buttons -->
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <!-- Button 1: Remove CC -->
+          <button id="btnRemoveCC" onclick="setCcEngineMode('remove')" class="flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-teal-400 text-black shadow-glow-cyan">
+            <span>[ Remove CC ]</span>
+          </button>
+
+          <!-- Button 2: Add CC / International -->
+          <button id="btnAddCC" onclick="setCcEngineMode('add')" class="flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 bg-slate-900 border border-slate-700 text-slate-300 hover:text-white">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>[ Add CC (+) ]</span>
+          </button>
+
+          <!-- Button 3: Raw (Keep As Is) -->
+          <button id="btnRawCC" onclick="setCcEngineMode('raw')" class="px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all">
+            Raw
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- HERO TARGET FOCUS CARD (BIG ONE-CLICK COPY) -->
+    <div class="glass-panel rounded-3xl p-5 md:p-7 mb-6 border-cyan-400/30 shadow-glow-cyan/15 relative overflow-hidden">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-5">
+        
+        <div class="w-full text-center md:text-left overflow-hidden">
+          <div class="flex items-center justify-center md:justify-start gap-2 mb-2">
+            <span class="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
+              <i data-lucide="target" class="w-3.5 h-3.5"></i> READY TO COPY
+            </span>
+            <span id="heroIndexBadge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">#0 of 0</span>
+            <span id="heroTypeBadge" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700">EMPTY</span>
+          </div>
+
+          <!-- Highlighted Ready String to Copy -->
+          <div id="heroItemText" class="font-mono text-2xl md:text-3xl font-extrabold text-white truncate py-1 selection:bg-cyan-500 selection:text-black">
+            No items in queue
+          </div>
+
+          <!-- Small subtext showing raw original if modified -->
+          <div id="heroRawHint" class="text-xs font-mono text-slate-400 mt-1 truncate hidden">
+            <!-- Populated dynamically -->
+          </div>
+
+          <p class="text-xs text-slate-500 mt-1 hidden sm:block">
+            Keyboard shortcut: Press <kbd class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-cyan-400 font-mono text-[11px]">Spacebar</kbd> or <kbd class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 text-cyan-400 font-mono text-[11px]">Enter</kbd> to copy & pop
+          </p>
+        </div>
+
+        <!-- Big Action Buttons -->
+        <div class="flex items-center gap-2.5 w-full md:w-auto">
+          <!-- Undo Button -->
+          <button onclick="undoLastPop()" title="Restore last copied item (Ctrl+Z)" class="px-4 py-3.5 rounded-2xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-all flex items-center justify-center gap-1.5 active:scale-95">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            <span>Undo</span>
+          </button>
+
+          <!-- Skip Button -->
+          <button onclick="skipTopItem()" title="Send current item to bottom of queue" class="px-4 py-3.5 rounded-2xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-all flex items-center justify-center gap-1.5 active:scale-95">
+            <i data-lucide="corner-down-right" class="w-4 h-4"></i>
+            <span>Skip</span>
+          </button>
+
+          <!-- Giant Copy & Pop Next -->
+          <button id="mainCopyPopBtn" onclick="copyAndPopNext()" class="flex-1 md:flex-initial px-8 py-3.5 rounded-2xl font-black text-sm text-black bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 hover:shadow-glow-cyan active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg">
+            <i data-lucide="copy" class="w-4 h-4"></i>
+            <span id="mainCopyBtnLabel">COPY & NEXT</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MAIN INPUT & INGESTION FORM -->
+    <div class="glass-panel rounded-3xl p-5 md:p-6 mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-xs font-bold text-slate-300 flex items-center gap-2 font-mono">
+          <i data-lucide="file-input" class="w-4 h-4 text-cyan-400"></i>
+          <span>PASTE BULK NUMBERS, EMAILS, OR DATA LINES</span>
+        </label>
+        <span id="inputLineCounter" class="text-[11px] font-mono text-slate-500">0 lines detected</span>
+      </div>
+
+      <textarea id="rawInput" rows="4" oninput="updateInputStats()" placeholder="+8801712345678&#10;8801812345678&#10;+998901234567&#10;998912345678&#10;+919876543210&#10;+1(555)234-5678&#10;user@example.com&#10;admin:password123" class="w-full bg-[#060a12] border border-slate-800 focus:border-cyan-400 rounded-2xl p-4 text-sm font-mono text-slate-100 placeholder-slate-600 focus:outline-none transition-all resize-none shadow-inner"></textarea>
+
+      <!-- Buttons Row -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mt-3.5 pt-3 border-t border-white/5">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Load Queue Button -->
+          <button onclick="loadAndProcessQueue()" class="px-5 py-2.5 rounded-xl text-xs font-bold text-black bg-gradient-to-r from-cyan-400 to-emerald-400 hover:shadow-glow-cyan active:scale-95 transition-all flex items-center gap-2 shadow-md">
+            <i data-lucide="play" class="w-3.5 h-3.5 fill-black"></i>
+            <span>Load to Queue</span>
+          </button>
+
+          <!-- Remove Duplicates Button -->
+          <button onclick="deduplicateQueue()" class="px-3.5 py-2.5 rounded-xl text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 active:scale-95">
+            <i data-lucide="filter" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Remove Duplicates</span>
+          </button>
+
+          <!-- Shuffle Button -->
+          <button onclick="shuffleQueue()" class="px-3.5 py-2.5 rounded-xl text-xs font-medium bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center gap-1.5 active:scale-95">
+            <i data-lucide="shuffle" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Shuffle</span>
+          </button>
+        </div>
+
+        <!-- Export File -->
+        <button onclick="exportRemaining()" class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-all flex items-center gap-1.5 ml-auto active:scale-95">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>Export Remaining (.txt)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- QUEUE PREVIEW & PROCESSED LOG -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Current Upcoming Queue (Left: 2 Cols) -->
+      <div class="md:col-span-2 glass-panel rounded-3xl p-5 md:p-6">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Upcoming Items Stream</h3>
+          </div>
+          <span id="queueBadge" class="text-xs font-mono font-semibold text-cyan-400">0 remaining</span>
+        </div>
+
+        <div id="queueContainer" class="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div id="queueEmptyState" class="py-12 text-center text-slate-600 text-xs font-medium">
+          Queue is empty. Paste data above and click "Load to Queue".
+        </div>
+      </div>
+
+      <!-- Processed Log (Right: 1 Col) -->
+      <div class="glass-panel rounded-3xl p-5 md:p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Processed Log</h3>
+            </div>
+            <button onclick="clearHistory()" class="text-[11px] text-slate-500 hover:text-rose-400">Clear</button>
+          </div>
+
+          <div id="historyContainer" class="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <div id="historyEmptyState" class="py-10 text-center text-slate-600 text-xs">
+            No items copied yet.
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-white/5 text-[10px] text-slate-500 text-center font-mono">
+          Made a mistake? Press Undo (Ctrl+Z)
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- FIXED BOTTOM TOUCH BAR FOR MOBILE PHONES -->
+  <div class="fixed bottom-0 left-0 right-0 p-3 bg-slate-950/95 backdrop-blur-2xl border-t border-white/10 md:hidden z-40">
+    <div class="flex items-center gap-2.5 max-w-md mx-auto">
+      <button onclick="undoLastPop()" title="Undo" class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 active:scale-95 flex items-center justify-center">
+        <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+      </button>
+
+      <button onclick="copyAndPopNext()" class="flex-1 h-12 rounded-2xl bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-glow-cyan active:scale-95 transition-all">
+        <i data-lucide="copy" class="w-4 h-4"></i>
+        <span>COPY & POP NEXT</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    // State
+    let streamQueue = [];
+    let historyQueue = [];
+    let initialTotalCount = 0;
+    let processedCount = 0;
+    let ccEngineMode = 'remove'; // 'remove' | 'add' | 'raw'
+    let soundEnabled = true;
+
+    // COMPREHENSIVE INTERNATIONAL COUNTRY PREFIXES
+    // Sorted with longer codes first so 880 matches before 88, 998 before 99, 1 before none, etc.
+    const WORLD_COUNTRY_CODES = [
+      // 3 Digits
+      { code: '880', name: 'Bangladesh', lead0: true },
+      { code: '998', name: 'Uzbekistan', lead0: false },
+      { code: '966', name: 'Saudi Arabia', lead0: true },
+      { code: '971', name: 'UAE', lead0: true },
+      { code: '234', name: 'Nigeria', lead0: true },
+      { code: '254', name: 'Kenya', lead0: true },
+      { code: '351', name: 'Portugal', lead0: false },
+      { code: '353', name: 'Ireland', lead0: true },
+      { code: '380', name: 'Ukraine', lead0: true },
+      { code: '964', name: 'Iraq', lead0: true },
+      { code: '962', name: 'Jordan', lead0: true },
+
+      // 2 Digits
+      { code: '91',  name: 'India', lead0: false },
+      { code: '92',  name: 'Pakistan', lead0: true },
+      { code: '62',  name: 'Indonesia', lead0: true },
+      { code: '60',  name: 'Malaysia', lead0: true },
+      { code: '63',  name: 'Philippines', lead0: true },
+      { code: '84',  name: 'Vietnam', lead0: true },
+      { code: '44',  name: 'United Kingdom', lead0: true },
+      { code: '49',  name: 'Germany', lead0: true },
+      { code: '33',  name: 'France', lead0: true },
+      { code: '39',  name: 'Italy', lead0: false },
+      { code: '34',  name: 'Spain', lead0: false },
+      { code: '55',  name: 'Brazil', lead0: false },
+      { code: '86',  name: 'China', lead0: false },
+      { code: '81',  name: 'Japan', lead0: true },
+      { code: '82',  name: 'South Korea', lead0: true },
+      { code: '90',  name: 'Turkey', lead0: true },
+      { code: '20',  name: 'Egypt', lead0: true },
+
+      // 1 Digit
+      { code: '1',   name: 'USA / Canada', lead0: false },
+      { code: '7',   name: 'Russia / Kazakhstan', lead0: false }
+    ];
+
+    // Sound FX (Web Audio API)
+    function playAudio(type = 'pop') {
+      if (!soundEnabled) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'pop') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(650, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1050, ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.08);
+        } else if (type === 'undo') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, ctx.currentTime);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.08);
+        }
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const label = document.getElementById('soundLabel');
+      const icon = document.getElementById('soundIcon');
+      if (soundEnabled) {
+        label.textContent = "Sound ON";
+        icon.setAttribute('data-lucide', 'volume-2');
+        triggerToast("Sound Enabled");
+      } else {
+        label.textContent = "Sound OFF";
+        icon.setAttribute('data-lucide', 'volume-x');
+        triggerToast("Sound Muted");
+      }
+      lucide.createIcons();
+    }
+
+    // Modern Fallback Clipboard Copy
+    function copyText(str) {
+      if (!str) return false;
+      const el = document.createElement('textarea');
+      el.value = str;
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      el.focus();
+      el.select();
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch (e) {
+        ok = false;
+      }
+      document.body.removeChild(el);
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(str).catch(() => {});
+      }
+      return ok;
+    }
+
+    // Toast Alert
+    function triggerToast(text, isSuccess = true) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `glass-panel border ${isSuccess ? 'border-cyan-400/40 shadow-glow-cyan/20' : 'border-rose-500/40'} rounded-2xl px-4 py-2.5 flex items-center gap-2.5 text-xs font-semibold text-white pointer-events-auto transform transition-all duration-200 -translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <span class="${isSuccess ? 'text-cyan-400' : 'text-rose-400'} font-bold">●</span>
+        <span>${escapeHtml(text)}</span>
+      `;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('-translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+      }, 1800);
+    }
+
+    // SMART AUTO-CLASSIFIER & COUNTRY CODE CLEANER
+    function processLineWithCC(rawLine, mode = ccEngineMode) {
+      const line = rawLine.trim();
+      if (!line) return null;
+
+      // 1. Email check
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(line)) {
+        return { type: 'email', formatted: line, raw: line, ccMeta: null };
+      }
+
+      // 2. Proxy (host:port or ip:port:user:pass)
+      if (/^[\w\.\-]+:\d{2,5}(:.*)?$/.test(line)) {
+        return { type: 'proxy', formatted: line, raw: line, ccMeta: null };
+      }
+
+      // 3. Combo (user:pass)
+      if (line.includes(':') && !line.includes('://') && line.split(':').length === 2) {
+        return { type: 'combo', formatted: line, raw: line, ccMeta: null };
+      }
+
+      // 4. Phone Number Check
+      const digitsOnly = line.replace(/\D/g, '');
+      const hasPlus = line.startsWith('+');
+
+      // Valid phone length: 7 to 15 digits
+      if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
+        if (mode === 'raw') {
+          return { type: 'phone', formatted: line, raw: line, ccMeta: null };
+        }
+
+        // Detect CC
+        let matchedCC = null;
+        for (const cc of WORLD_COUNTRY_CODES) {
+          if (hasPlus && digitsOnly.startsWith(cc.code)) {
+            matchedCC = cc;
+            break;
+          } else if (!hasPlus && digitsOnly.startsWith(cc.code)) {
+            // Must have sufficient remaining digits to be a legitimate local phone number
+            const remainingLen = digitsOnly.length - cc.code.length;
+            if (remainingLen >= 7 && remainingLen <= 11) {
+              matchedCC = cc;
+              break;
+            }
+          }
+        }
+
+        // MODE: REMOVE CC (Strips CC + / CC digits)
+        if (mode === 'remove') {
+          if (matchedCC) {
+            let domestic = digitsOnly.substring(matchedCC.code.length);
+            // Prepend domestic 0 if applicable (e.g., Bangladesh 017..., UK 07...)
+            if (matchedCC.lead0 && !domestic.startsWith('0')) {
+              domestic = '0' + domestic;
+            }
+            return {
+              type: 'phone',
+              formatted: domestic,
+              raw: line,
+              ccMeta: `${matchedCC.name} (+${matchedCC.code}) Removed`
+            };
+          }
+          // If no specific country matched but has '+' prefix, just strip the non-digits
+          if (hasPlus) {
+            return { type: 'phone', formatted: digitsOnly, raw: line, ccMeta: 'Prefix Stripped' };
+          }
+          return { type: 'phone', formatted: digitsOnly, raw: line, ccMeta: null };
+        }
+
+        // MODE: ADD CC (Ensures standard international format with '+')
+        if (mode === 'add') {
+          if (hasPlus) {
+            return { type: 'phone', formatted: '+' + digitsOnly, raw: line, ccMeta: 'International (+)' };
+          }
+          if (matchedCC) {
+            return { type: 'phone', formatted: '+' + digitsOnly, raw: line, ccMeta: `+${matchedCC.code} Standardized` };
+          }
+          // Default: Add '+' to digits
+          return { type: 'phone', formatted: '+' + digitsOnly, raw: line, ccMeta: 'Prefix +' };
+        }
+      }
+
+      // Default: Raw text line
+      return { type: 'text', formatted: line, raw: line, ccMeta: null };
+    }
+
+    // Toggle CC Engine Mode: 'remove' | 'add' | 'raw'
+    function setCcEngineMode(mode) {
+      ccEngineMode = mode;
+
+      const btnRemove = document.getElementById('btnRemoveCC');
+      const btnAdd = document.getElementById('btnAddCC');
+      const btnRaw = document.getElementById('btnRawCC');
+      const badge = document.getElementById('activeCcModeBadge');
+
+      // Reset styles
+      btnRemove.className = "flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 bg-slate-900 border border-slate-700 text-slate-300 hover:text-white";
+      btnAdd.className = "flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 bg-slate-900 border border-slate-700 text-slate-300 hover:text-white";
+      btnRaw.className = "px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all";
+
+      if (mode === 'remove') {
+        btnRemove.className = "flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-teal-400 text-black shadow-glow-cyan";
+        badge.textContent = "REMOVE CC ACTIVE";
+        badge.className = "text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30";
+      } else if (mode === 'add') {
+        btnAdd.className = "flex-1 md:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-400 to-teal-400 text-black shadow-glow-emerald";
+        badge.textContent = "ADD CC (+) ACTIVE";
+        badge.className = "text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+      } else {
+        btnRaw.className = "px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-700 text-white shadow-sm transition-all";
+        badge.textContent = "RAW MODE ACTIVE";
+        badge.className = "text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700";
+      }
+
+      // Re-apply immediately to existing queue
+      if (streamQueue.length > 0) {
+        streamQueue = streamQueue.map(item => {
+          const res = processLineWithCC(item.raw, mode);
+          return {
+            ...item,
+            formatted: res.formatted,
+            type: res.type,
+            ccMeta: res.ccMeta
+          };
+        });
+        updateDashboard();
+        renderQueue();
+        triggerToast(`Switched: ${mode.toUpperCase()} CC`);
+      }
+    }
+
+    // Input stats indicator
+    function updateInputStats() {
+      const text = document.getElementById('rawInput').value;
+      const count = text.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean).length;
+      document.getElementById('inputLineCounter').textContent = `${count} lines detected`;
+    }
+
+    // Load & Ingest Queue
+    function loadAndProcessQueue() {
+      const rawText = document.getElementById('rawInput').value;
+      if (!rawText.trim()) {
+        triggerToast("Please paste some data lines first", false);
+        return;
+      }
+
+      const lines = rawText.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+      if (lines.length === 0) return;
+
+      streamQueue = [];
+      lines.forEach((line, index) => {
+        const item = processLineWithCC(line, ccEngineMode);
+        if (item) {
+          streamQueue.push({
+            id: 'item-' + Date.now() + '-' + index,
+            raw: item.raw,
+            formatted: item.formatted,
+            type: item.type,
+            ccMeta: item.ccMeta
+          });
+        }
+      });
+
+      initialTotalCount = streamQueue.length;
+      processedCount = 0;
+      historyQueue = [];
+
+      updateDashboard();
+      renderQueue();
+      renderHistory();
+      playAudio('pop');
+      triggerToast(`Loaded ${streamQueue.length} items!`);
+    }
+
+    // HERO ACTION: COPY & POP NEXT (Decrements 100 -> 99 -> 98...)
+    function copyAndPopNext() {
+      if (streamQueue.length === 0) {
+        triggerToast("Queue is empty!", false);
+        return;
+      }
+
+      const topItem = streamQueue[0];
+      copyText(topItem.formatted);
+      playAudio('pop');
+
+      // Visual flash on button
+      const copyBtn = document.getElementById('mainCopyPopBtn');
+      const label = document.getElementById('mainCopyBtnLabel');
+      copyBtn.classList.add('ring-4', 'ring-emerald-400');
+      label.textContent = "COPIED!";
+
+      setTimeout(() => {
+        copyBtn.classList.remove('ring-4', 'ring-emerald-400');
+        label.textContent = "COPY & NEXT";
+      }, 250);
+
+      // Pop item from queue and add to history
+      const el = document.getElementById(topItem.id);
+      if (el) el.classList.add('card-pop-anim');
+
+      setTimeout(() => {
+        streamQueue.shift();
+        processedCount++;
+
+        historyQueue.unshift({
+          ...topItem,
+          copiedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        });
+        if (historyQueue.length > 25) historyQueue.pop();
+
+        updateDashboard();
+        renderQueue();
+        renderHistory();
+        triggerToast(`Copied: ${topItem.formatted}`);
+      }, 150);
+    }
+
+    // Skip current top item to end of queue
+    function skipTopItem() {
+      if (streamQueue.length <= 1) return;
+      const top = streamQueue.shift();
+      streamQueue.push(top);
+      updateDashboard();
+      renderQueue();
+      triggerToast("Skipped to bottom");
+    }
+
+    // Undo (Ctrl+Z)
+    function undoLastPop() {
+      if (historyQueue.length === 0) {
+        triggerToast("Nothing to undo", false);
+        return;
+      }
+
+      const restored = historyQueue.shift();
+      streamQueue.unshift({
+        id: restored.id,
+        raw: restored.raw,
+        formatted: restored.formatted,
+        type: restored.type,
+        ccMeta: restored.ccMeta
+      });
+
+      processedCount = Math.max(0, processedCount - 1);
+      updateDashboard();
+      renderQueue();
+      renderHistory();
+      playAudio('undo');
+      triggerToast(`Restored: ${restored.formatted}`);
+    }
+
+    // Remove duplicates
+    function deduplicateQueue() {
+      if (streamQueue.length === 0) return;
+      const seen = new Set();
+      const unique = [];
+      streamQueue.forEach(item => {
+        if (!seen.has(item.formatted)) {
+          seen.add(item.formatted);
+          unique.push(item);
+        }
+      });
+      const removedCount = streamQueue.length - unique.length;
+      streamQueue = unique;
+      initialTotalCount = streamQueue.length + processedCount;
+      updateDashboard();
+      renderQueue();
+      triggerToast(`Removed ${removedCount} duplicates`);
+    }
+
+    // Shuffle queue
+    function shuffleQueue() {
+      if (streamQueue.length <= 1) return;
+      for (let i = streamQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [streamQueue[i], streamQueue[j]] = [streamQueue[j], streamQueue[i]];
+      }
+      updateDashboard();
+      renderQueue();
+      triggerToast("Queue shuffled");
+    }
+
+    // Export Remaining Items to .txt file
+    function exportRemaining() {
+      if (streamQueue.length === 0) {
+        triggerToast("No items to export", false);
+        return;
+      }
+      const fileData = streamQueue.map(i => i.formatted).join('\n');
+      const blob = new Blob([fileData], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nokolclip_export_${Date.now()}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      triggerToast("Exported .txt file");
+    }
+
+    // Clear everything
+    function clearEverything() {
+      streamQueue = [];
+      historyQueue = [];
+      initialTotalCount = 0;
+      processedCount = 0;
+      document.getElementById('rawInput').value = '';
+      updateInputStats();
+      updateDashboard();
+      renderQueue();
+      renderHistory();
+      triggerToast("All cleared");
+    }
+
+    function clearHistory() {
+      historyQueue = [];
+      renderHistory();
+    }
+
+    // Update Dashboard Metrics & Hero Card
+    function updateDashboard() {
+      document.getElementById('dispTotal').textContent = initialTotalCount;
+      document.getElementById('dispRemaining').textContent = streamQueue.length;
+      document.getElementById('dispProcessed').textContent = processedCount;
+      document.getElementById('queueBadge').textContent = `${streamQueue.length} remaining`;
+
+      const heroText = document.getElementById('heroItemText');
+      const heroIndex = document.getElementById('heroIndexBadge');
+      const heroType = document.getElementById('heroTypeBadge');
+      const heroHint = document.getElementById('heroRawHint');
+
+      if (streamQueue.length > 0) {
+        const top = streamQueue[0];
+        heroText.textContent = top.formatted;
+        heroIndex.textContent = `#${processedCount + 1} of ${initialTotalCount}`;
+        heroType.textContent = top.type.toUpperCase();
+
+        if (top.type === 'phone') {
+          heroType.className = "text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-400 border border-cyan-500/30";
+        } else if (top.type === 'email') {
+          heroType.className = "text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/30";
+        } else {
+          heroType.className = "text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700";
+        }
+
+        if (top.raw !== top.formatted) {
+          heroHint.classList.remove('hidden');
+          heroHint.textContent = `Raw original: ${top.raw} ${top.ccMeta ? '— ' + top.ccMeta : ''}`;
+        } else {
+          heroHint.classList.add('hidden');
+        }
+      } else {
+        heroText.textContent = "No items in queue";
+        heroIndex.textContent = "#0 of 0";
+        heroType.textContent = "EMPTY";
+        heroType.className = "text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-500 border border-slate-700";
+        heroHint.classList.add('hidden');
+      }
+
+      const emptyEl = document.getElementById('queueEmptyState');
+      if (streamQueue.length === 0) {
+        emptyEl.classList.remove('hidden');
+      } else {
+        emptyEl.classList.add('hidden');
+      }
+    }
+
+    // Render Stream List
+    function renderQueue() {
+      const container = document.getElementById('queueContainer');
+      container.innerHTML = '';
+
+      // Preview top 40 for speed and smooth rendering
+      const preview = streamQueue.slice(0, 40);
+
+      preview.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.id = item.id;
+        row.className = "flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-cyan-500/40 transition-all text-xs";
+        
+        row.innerHTML = `
+          <div class="flex items-center gap-2.5 overflow-hidden">
+            <span class="font-mono text-[10px] font-bold text-slate-500 w-6">#${processedCount + idx + 1}</span>
+            <span class="font-mono font-medium text-slate-200 truncate select-all">${escapeHtml(item.formatted)}</span>
+          </div>
+
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <span class="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">${item.type}</span>
+            <button onclick="copySingleItem('${item.id}')" class="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500 hover:text-black text-cyan-400 font-semibold transition-all">
+              Copy
+            </button>
+            <button onclick="deleteSingleItem('${item.id}')" class="p-1 text-slate-500 hover:text-rose-400 transition-all">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function copySingleItem(id) {
+      const index = streamQueue.findIndex(i => i.id === id);
+      if (index === -1) return;
+      const item = streamQueue[index];
+      copyText(item.formatted);
+      playAudio('pop');
+      streamQueue.splice(index, 1);
+      processedCount++;
+      historyQueue.unshift({
+        ...item,
+        copiedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      });
+      updateDashboard();
+      renderQueue();
+      renderHistory();
+      triggerToast(`Copied: ${item.formatted}`);
+    }
+
+    function deleteSingleItem(id) {
+      streamQueue = streamQueue.filter(i => i.id !== id);
+      updateDashboard();
+      renderQueue();
+    }
+
+    // Render Processed History
+    function renderHistory() {
+      const container = document.getElementById('historyContainer');
+      const empty = document.getElementById('historyEmptyState');
+      container.innerHTML = '';
+
+      if (historyQueue.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      historyQueue.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "p-2 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between text-xs";
+        div.innerHTML = `
+          <div class="overflow-hidden pr-2">
+            <span class="font-mono text-[11px] text-slate-300 truncate block">${escapeHtml(item.formatted)}</span>
+            <span class="text-[9px] text-slate-600 font-mono">${item.copiedAt}</span>
+          </div>
+          <button onclick="copyText('${escapeHtml(item.formatted)}'); playAudio('pop'); triggerToast('Re-copied');" class="text-slate-400 hover:text-cyan-400 p-1 flex-shrink-0">
+            <i data-lucide="copy" class="w-3 h-3"></i>
+          </button>
+        `;
+        container.appendChild(div);
+      });
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // Global Keyboard Shortcuts (Space / Enter to copy, Ctrl+Z to undo)
+    window.addEventListener('keydown', function(e) {
+      if (['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName)) return;
+
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        copyAndPopNext();
+      } else if (e.code === 'KeyZ' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        undoLastPop();
+      }
+    });
+
+    // Window Init
+    window.onload = function() {
+      if (window.lucide) lucide.createIcons();
+      updateDashboard();
+    };
+  </script>
+</body>
+</html>            <i data-lucide="scissors" class="w-4 h-4"></i>
